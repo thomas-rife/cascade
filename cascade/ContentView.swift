@@ -8,17 +8,28 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var sessionStore: SessionStore
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            if sessionStore.activeServer == nil {
+                ServerConnectView()
+            } else if !sessionStore.isAuthenticated {
+                LoginView()
+            } else {
+                MainTabView()
+            }
         }
-        .padding()
+        .onAppear {
+            #if os(iOS)
+            AppOrientation.lock(.portrait)
+            #endif
+        }
     }
 }
 
 #Preview {
     ContentView()
+        .environmentObject(SessionStore())
+        .environmentObject(SettingsStore())
 }

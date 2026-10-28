@@ -6,14 +6,52 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		6878CC702FCC05F400412446 /* JellyfinAPI in Frameworks */ = {isa = PBXBuildFile; productRef = 6878CC6F2FCC05F400412446 /* JellyfinAPI */; };
+		6878CE312FCDE9AF00412446 /* JellyfinAPI in Frameworks */ = {isa = PBXBuildFile; productRef = 6878CE302FCDE9AF00412446 /* JellyfinAPI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		6878CC512FCBDD7600412446 /* cascade.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = cascade.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6878CE172FCDE6DB00412446 /* cascade-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "cascade-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		6878CE272FCDE88C00412446 /* Exceptions for "cascade" folder in "cascade-tvOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Shared/Models/Device.swift,
+				Shared/Models/ServerAccount.swift,
+				Shared/Models/User.swift,
+				Shared/Services/JellyfinService.swift,
+				Shared/Stores/HomeStore.swift,
+				Shared/Stores/SessionStore.swift,
+				Shared/Stores/SettingsStore.swift,
+			);
+			target = 6878CE162FCDE6DB00412446 /* cascade-tvOS */;
+		};
+		68A9E6ED2FD52DA900322B6F /* Exceptions for "cascade" folder in "cascade" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 6878CC502FCBDD7600412446 /* cascade */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6878CC532FCBDD7600412446 /* cascade */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				68A9E6ED2FD52DA900322B6F /* Exceptions for "cascade" folder in "cascade" target */,
+				6878CE272FCDE88C00412446 /* Exceptions for "cascade" folder in "cascade-tvOS" target */,
+			);
 			path = cascade;
+			sourceTree = "<group>";
+		};
+		6878CE182FCDE6DB00412446 /* cascade-tvOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "cascade-tvOS";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -23,6 +61,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6878CC702FCC05F400412446 /* JellyfinAPI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6878CE142FCDE6DB00412446 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6878CE312FCDE9AF00412446 /* JellyfinAPI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -33,6 +80,8 @@
 			isa = PBXGroup;
 			children = (
 				6878CC532FCBDD7600412446 /* cascade */,
+				6878CE182FCDE6DB00412446 /* cascade-tvOS */,
+				6878CE2F2FCDE9AF00412446 /* Frameworks */,
 				6878CC522FCBDD7600412446 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +90,16 @@
 			isa = PBXGroup;
 			children = (
 				6878CC512FCBDD7600412446 /* cascade.app */,
+				6878CE172FCDE6DB00412446 /* cascade-tvOS.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		6878CE2F2FCDE9AF00412446 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -65,9 +122,33 @@
 			);
 			name = cascade;
 			packageProductDependencies = (
+				6878CC6F2FCC05F400412446 /* JellyfinAPI */,
 			);
 			productName = cascade;
 			productReference = 6878CC512FCBDD7600412446 /* cascade.app */;
+			productType = "com.apple.product-type.application";
+		};
+		6878CE162FCDE6DB00412446 /* cascade-tvOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6878CE1F2FCDE6DC00412446 /* Build configuration list for PBXNativeTarget "cascade-tvOS" */;
+			buildPhases = (
+				6878CE132FCDE6DB00412446 /* Sources */,
+				6878CE142FCDE6DB00412446 /* Frameworks */,
+				6878CE152FCDE6DB00412446 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6878CE182FCDE6DB00412446 /* cascade-tvOS */,
+			);
+			name = "cascade-tvOS";
+			packageProductDependencies = (
+				6878CE302FCDE9AF00412446 /* JellyfinAPI */,
+			);
+			productName = "cascade-tvOS";
+			productReference = 6878CE172FCDE6DB00412446 /* cascade-tvOS.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -83,6 +164,9 @@
 					6878CC502FCBDD7600412446 = {
 						CreatedOnToolsVersion = 26.5;
 					};
+					6878CE162FCDE6DB00412446 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 				};
 			};
 			buildConfigurationList = 6878CC4C2FCBDD7600412446 /* Build configuration list for PBXProject "cascade" */;
@@ -94,12 +178,16 @@
 			);
 			mainGroup = 6878CC482FCBDD7600412446;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6878CC6E2FCC05F400412446 /* XCRemoteSwiftPackageReference "jellyfin-sdk-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6878CC522FCBDD7600412446 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				6878CC502FCBDD7600412446 /* cascade */,
+				6878CE162FCDE6DB00412446 /* cascade-tvOS */,
 			);
 		};
 /* End PBXProject section */
@@ -112,10 +200,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6878CE152FCDE6DB00412446 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		6878CC4D2FCBDD7600412446 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6878CE132FCDE6DB00412446 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -251,13 +353,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MY8ZQP67U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = cascade/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -266,12 +370,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = thomasrife.cascade;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -282,13 +390,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MY8ZQP67U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = cascade/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -297,12 +407,78 @@
 				PRODUCT_BUNDLE_IDENTIFIER = thomasrife.cascade;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		6878CE202FCDE6DC00412446 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MY8ZQP67U;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "thomasrife.cascade-tvOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 26.5;
+			};
+			name = Debug;
+		};
+		6878CE212FCDE6DC00412446 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "App Icon & Top Shelf Image";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2MY8ZQP67U;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Automatic;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "thomasrife.cascade-tvOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = appletvos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+				TVOS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
 		};
@@ -327,7 +503,40 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		6878CE1F2FCDE6DC00412446 /* Build configuration list for PBXNativeTarget "cascade-tvOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6878CE202FCDE6DC00412446 /* Debug */,
+				6878CE212FCDE6DC00412446 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6878CC6E2FCC05F400412446 /* XCRemoteSwiftPackageReference "jellyfin-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jellyfin/jellyfin-sdk-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6878CC6F2FCC05F400412446 /* JellyfinAPI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6878CC6E2FCC05F400412446 /* XCRemoteSwiftPackageReference "jellyfin-sdk-swift" */;
+			productName = JellyfinAPI;
+		};
+		6878CE302FCDE9AF00412446 /* JellyfinAPI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6878CC6E2FCC05F400412446 /* XCRemoteSwiftPackageReference "jellyfin-sdk-swift" */;
+			productName = JellyfinAPI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6878CC492FCBDD7600412446 /* Project object */;
 }
