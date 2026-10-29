@@ -5,6 +5,7 @@
 //  Created by Thomas Rife on 5/30/26.
 //
 
+import AVFoundation
 import Foundation
 import JellyfinAPI
 import Get
@@ -15,6 +16,7 @@ final class JellyfinService {
         case missingMediaSource
         case invalidStreamURL
         case missingTranscodingURL
+        case unavailableTrack
 
         var errorDescription: String? {
             switch self {
@@ -26,6 +28,8 @@ final class JellyfinService {
                 return "The generated playback URL was invalid."
             case .missingTranscodingURL:
                 return "Jellyfin did not return a compatible transcoded stream."
+            case .unavailableTrack:
+                return "The selected track is no longer available. Reopen Audio & Subtitles and choose a track again."
             }
         }
     }
@@ -38,7 +42,8 @@ final class JellyfinService {
         deviceName: String,
         deviceID: String,
         appVersion: String,
-        accessToken: String? = nil
+        accessToken: String? = nil,
+        sessionConfiguration: URLSessionConfiguration = .default
     ) {
         self.client = JellyfinClient(
             configuration: .init(
@@ -48,7 +53,8 @@ final class JellyfinService {
                 deviceName: deviceName,
                 deviceID: deviceID,
                 version: appVersion,
-            )
+            ),
+            sessionConfiguration: sessionConfiguration
         )
     }
     
@@ -82,8 +88,11 @@ final class JellyfinService {
         let result = try await client.send(
             Paths.getItems(parameters: .init(
                 userID: userID,
-                isRecursive: true, parentID: parentID,
-                fields: [.overview, .mediaStreams, .path], includeItemTypes: [.movie],
+                isRecursive: true,
+                sortOrder: [.descending],
+                parentID: parentID,
+                fields: [.overview, .mediaStreams, .path, .dateCreated], includeItemTypes: [.movie],
+                sortBy: [.dateCreated],
                 enableUserData: true, enableImages: true
             ))
         ).value
@@ -95,8 +104,11 @@ final class JellyfinService {
         let result = try await client.send(
             Paths.getItems(parameters: .init(
                 userID: userID,
-                isRecursive: true, parentID: parentID,
-                fields: [.overview, .mediaStreams], includeItemTypes: [.series],
+                isRecursive: true,
+                sortOrder: [.descending],
+                parentID: parentID,
+                fields: [.overview, .mediaStreams, .dateCreated, .dateLastMediaAdded], includeItemTypes: [.series],
+                sortBy: [.dateLastContentAdded, .dateCreated],
                 enableUserData: true, enableImages: true
             ))
         ).value
@@ -233,38 +245,68 @@ final class JellyfinService {
         return session.streamURL
     }
 
+    func fetchMediaDetails(itemID: String, userID: String) async throws -> BaseItemDto {
+        try await client.send(Paths.getItem(itemID: itemID, userID: userID)).value
+    }
+
     func preparePlaybackSession(
         for item: BaseItemDto,
         userID: String,
         quality: PlaybackQualityPreset,
-        startTimeTicks: Int? = nil
+        startTimeTicks: Int? = nil,
+        trackSelection: MovieTrackSelection = .init()
     ) async throws -> PreparedPlaybackSession {
         guard let itemID = item.id else {
             throw PlaybackError.missingItemID
         }
 
         let resolvedStartTimeTicks = startTimeTicks ?? item.userData?.playbackPositionTicks
-        let prefersDirectPlayback = quality.allowsDirectPlay
-        let playbackItem = try await client.send(Paths.getItem(itemID: itemID, userID: userID)).value
+        let prefersDirectPlayback = quality.allowsDirectPlay && !trackSelection.hasExplicitSelection
+        let playbackItem = try await fetchMediaDetails(itemID: itemID, userID: userID)
         
-        let selectedMediaSource = playbackItem.mediaSources?.first
+        let selectedMediaSource: MediaSourceInfo?
+        if let sourceID = trackSelection.mediaSourceID {
+            guard let source = playbackItem.mediaSources?.first(where: { $0.id == sourceID }) else {
+                throw PlaybackError.unavailableTrack
+            }
+            selectedMediaSource = source
+        } else {
+            selectedMediaSource = playbackItem.mediaSources?.first
+        }
         let selectedMediaSourceID = selectedMediaSource?.id
-        let selectedAudioStreamIndex = preferredAudioStreamIndex(
+        let streams = selectedMediaSource?.mediaStreams ?? playbackItem.mediaStreams ?? []
+        if let index = trackSelection.audioStreamIndex,
+           !streams.contains(where: { $0.type == .audio && $0.index == index }) {
+            throw PlaybackError.unavailableTrack
+        }
+        if let index = trackSelection.subtitleStreamIndex, index != -1,
+           !streams.contains(where: { $0.type == .subtitle && $0.index == index }) {
+            throw PlaybackError.unavailableTrack
+        }
+        let selectedAudioStreamIndex = trackSelection.audioStreamIndex ?? preferredAudioStreamIndex(
             item: playbackItem,
             mediaSource: selectedMediaSource,
             prefersDirectPlayback: prefersDirectPlayback
         )
-        let selectedSubtitleStreamIndex = preferredSubtitleStreamIndex(
+        let selectedSubtitleStreamIndex = trackSelection.subtitleStreamIndex ?? preferredSubtitleStreamIndex(
             item: playbackItem,
             mediaSource: selectedMediaSource
         )
+        let selectedSubtitle = streams.first { $0.type == .subtitle && $0.index == selectedSubtitleStreamIndex }
+        let burnsSubtitles = selectedSubtitle.map { subtitle in
+            subtitle.isTextSubtitleStream != true
+        } ?? false
+        // A static file ignores server-side track choices. Use HLS when the user
+        // picks a track; Original can still copy video unless subtitles need burning.
+        let allowsVideoCopy = quality.allowsDirectPlay && !burnsSubtitles
+        let allowsAudioCopy = quality.allowsDirectPlay
         let info = PlaybackInfoDto(
-            allowAudioStreamCopy: prefersDirectPlayback,
-            allowVideoStreamCopy: prefersDirectPlayback,
+            allowAudioStreamCopy: allowsAudioCopy,
+            allowVideoStreamCopy: allowsVideoCopy,
             audioStreamIndex: selectedAudioStreamIndex,
             deviceProfile: playbackDeviceProfile(for: quality),
             enableDirectPlay: prefersDirectPlayback,
-            enableDirectStream: prefersDirectPlayback,
+            enableDirectStream: quality.allowsDirectPlay && !burnsSubtitles,
             enableTranscoding: true,
             maxAudioChannels: 6,
             maxStreamingBitrate: quality.preferredPlaybackBitrate,
@@ -283,10 +325,10 @@ final class JellyfinService {
             maxAudioChannels: 6,
             mediaSourceID: selectedMediaSourceID,
             enableDirectPlay: prefersDirectPlayback,
-            enableDirectStream: prefersDirectPlayback,
+            enableDirectStream: quality.allowsDirectPlay && !burnsSubtitles,
             enableTranscoding: true,
-            allowVideoStreamCopy: prefersDirectPlayback,
-            allowAudioStreamCopy: prefersDirectPlayback
+            allowVideoStreamCopy: allowsVideoCopy,
+            allowAudioStreamCopy: allowsAudioCopy
         )
 
         let playbackInfo = try await client.send(
@@ -298,7 +340,7 @@ final class JellyfinService {
         ).value
         
 
-        guard let mediaSource = playbackInfo.mediaSources?.first else {
+        guard let mediaSource = playbackInfo.mediaSources?.first(where: { selectedMediaSourceID == nil || $0.id == selectedMediaSourceID }) else {
             throw PlaybackError.missingMediaSource
         }
 
@@ -335,9 +377,11 @@ final class JellyfinService {
                     audioCodec: "aac",
                     allowVideoStreamCopy: false,
                     allowAudioStreamCopy: false,
-                    videoBitRate: quality.preferredPlaybackBitrate,
+                    audioBitRate: 192_000,
+                    maxAudioChannels: 6,
+                    videoBitRate: quality.preferredPlaybackBitrate - 192_000,
                     subtitleStreamIndex: selectedSubtitleStreamIndex,
-                    subtitleMethod: .hls,
+                    subtitleMethod: burnsSubtitles ? .encode : .hls,
                     videoCodec: "h264",
                     audioStreamIndex: selectedAudioStreamIndex ?? mediaSource.defaultAudioStreamIndex,
                     enableAdaptiveBitrateStreaming: true
@@ -358,6 +402,8 @@ final class JellyfinService {
             playSessionID: playbackInfo.playSessionID,
             audioStreamIndex: selectedAudioStreamIndex ?? mediaSource.defaultAudioStreamIndex,
             subtitleStreamIndex: selectedSubtitleStreamIndex,
+            explicitSubtitleStreamIndex: trackSelection.subtitleStreamIndex,
+            burnsSubtitles: burnsSubtitles,
             playMethod: playMethod,
             streamURL: streamURL,
             startTimeTicks: resolvedStartTimeTicks
@@ -656,7 +702,42 @@ struct PreparedPlaybackSession {
     let playSessionID: String?
     let audioStreamIndex: Int?
     let subtitleStreamIndex: Int?
+    let explicitSubtitleStreamIndex: Int?
+    let burnsSubtitles: Bool
     let playMethod: PlayMethod
     let streamURL: URL
     let startTimeTicks: Int?
+
+    @MainActor
+    func makePlayer() async throws -> AVPlayer {
+        let player = AVPlayer(url: streamURL)
+        guard let index = explicitSubtitleStreamIndex, !burnsSubtitles,
+              let item = player.currentItem else { return player }
+
+        // Keep the explicit movie-page choice from being replaced by OS language preferences.
+        player.appliesMediaSelectionCriteriaAutomatically = false
+        if let group = try await item.asset.loadMediaSelectionGroup(for: .legible) {
+            if index == -1 {
+                item.select(nil, in: group)
+            } else if let option = group.defaultOption {
+                item.select(option, in: group)
+            } else {
+                throw JellyfinService.PlaybackError.unavailableTrack
+            }
+        } else if index != -1 {
+            throw JellyfinService.PlaybackError.unavailableTrack
+        }
+        return player
+    }
+}
+
+nonisolated struct MovieTrackSelection {
+    var mediaSourceID: String?
+    var audioStreamIndex: Int?
+    // nil follows Jellyfin's preference; -1 explicitly disables subtitles.
+    var subtitleStreamIndex: Int?
+
+    var hasExplicitSelection: Bool {
+        audioStreamIndex != nil || subtitleStreamIndex != nil
+    }
 }

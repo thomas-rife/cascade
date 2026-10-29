@@ -21,6 +21,7 @@ struct TVMovieDetailView: View {
     @State private var isPresentingPlayer = false
     @State private var isPreparingPlayback = false
     @State private var playbackError: String?
+    @StateObject private var playbackOptions = MoviePlaybackOptions()
 
     var body: some View {
         ScrollView {
@@ -42,6 +43,10 @@ struct TVMovieDetailView: View {
                             Text(metadata)
                                 .font(.body)
                                 .foregroundStyle(.secondary)
+                        }
+
+                        MovieTrackSelector(options: playbackOptions) {
+                            Task { await loadMediaDetails() }
                         }
 
                         Button {
@@ -88,6 +93,9 @@ struct TVMovieDetailView: View {
                     .ignoresSafeArea()
             }
         }
+        .task(id: movie.id) {
+            await loadMediaDetails()
+        }
     }
 
     private var metaLine: String? {
@@ -123,7 +131,7 @@ struct TVMovieDetailView: View {
     }
     
     private var primaryMediaSource: MediaSourceInfo? {
-        movie.mediaSources?.first
+        playbackOptions.mediaSource ?? movie.mediaSources?.first
     }
 
     private var videoStream: MediaStream? {
@@ -132,8 +140,10 @@ struct TVMovieDetailView: View {
     }
 
     private var audioStream: MediaStream? {
-        primaryMediaSource?.mediaStreams?.first(where: { $0.type == .audio })
-            ?? movie.mediaStreams?.first(where: { $0.type == .audio })
+        let streams = primaryMediaSource?.mediaStreams ?? movie.mediaStreams ?? []
+        let index = playbackOptions.selection.audioStreamIndex ?? primaryMediaSource?.defaultAudioStreamIndex
+        return streams.first(where: { $0.type == .audio && $0.index == index })
+            ?? streams.first(where: { $0.type == .audio })
     }
 
     private var resolutionText: String? {
@@ -223,6 +233,15 @@ struct TVMovieDetailView: View {
     }
 
     @MainActor
+    private func loadMediaDetails() async {
+        await playbackOptions.load(
+            itemID: movie.id,
+            service: sessionStore.service,
+            userID: sessionStore.activeAccount?.userID
+        )
+    }
+
+    @MainActor
     private func startPlayback() async {
         guard let service = sessionStore.service, let account = sessionStore.activeAccount else {
             playbackError = "Missing active session."
@@ -237,9 +256,10 @@ struct TVMovieDetailView: View {
             let playbackSession = try await service.preparePlaybackSession(
                 for: movie,
                 userID: account.userID,
-                quality: settingsStore.playbackQuality
+                quality: settingsStore.playbackQuality,
+                trackSelection: playbackOptions.selection
             )
-            let player = AVPlayer(url: playbackSession.streamURL)
+            let player = try await playbackSession.makePlayer()
             if let startTimeTicks = playbackSession.startTimeTicks, startTimeTicks > 0 {
                 await seek(player: player, to: startTimeTicks)
             }

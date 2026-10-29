@@ -247,6 +247,8 @@ struct MovieDetailView: View {
     @State private var playbackError: String?
     @State private var isExpanded: Bool = false
     @State private var isPresentingMediaInfo = false
+    @State private var infoButtonFrame: CGRect = .zero
+    @StateObject private var playbackOptions = MoviePlaybackOptions()
 
     private let topBleedHeight: CGFloat = 220
 
@@ -354,10 +356,32 @@ struct MovieDetailView: View {
                         Image(systemName: "info.circle")
                             .font(.headline)
                     }
+                    .accessibilityLabel("File Info")
+                    .accessibilityIdentifier("movie.fileInfo")
+                    .onGeometryChange(for: CGRect.self) { proxy in
+                        proxy.frame(in: .global)
+                    } action: { frame in
+                        infoButtonFrame = frame
+                    }
                 }
             }
         }
         .ignoresSafeArea(edges: .top)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .overlay {
+            GeometryReader { proxy in
+                if infoButtonFrame.height > 0 {
+                    let origin = proxy.frame(in: .global).origin
+                    MovieTrackSelector(options: playbackOptions, retry: reloadMediaDetails)
+                        .modifier(MoviePosterControlStyle())
+                        .accessibilityIdentifier("movie.trackSelector")
+                        .position(
+                            x: infoButtonFrame.midX - origin.x,
+                            y: infoButtonFrame.midY - origin.y + MoviePosterControlStyle.diameter + 8
+                        )
+                }
+            }
+        }
         .fullScreenCover(isPresented: $isPresentingPlayer, onDismiss: stopPlayback) {
             if let player {
                 NativeVideoPlayerView(player: player)
@@ -365,7 +389,15 @@ struct MovieDetailView: View {
             }
         }
         .sheet(isPresented: $isPresentingMediaInfo) {
-            MovieMediaInfoSheet(rows: mediaInfoRows)
+            MovieMediaInfoSheet(
+                rows: mediaInfoRows,
+                isLoading: playbackOptions.isLoading,
+                errorMessage: playbackOptions.errorMessage,
+                retry: reloadMediaDetails
+            )
+        }
+        .task(id: movie.id) {
+            await loadMediaDetails()
         }
     }
 
@@ -558,7 +590,7 @@ struct MovieDetailView: View {
     }
 
     private var primaryMediaSource: MediaSourceInfo? {
-        movie.mediaSources?.first
+        playbackOptions.mediaSource ?? movie.mediaSources?.first
     }
 
     private var videoStream: MediaStream? {
@@ -567,8 +599,10 @@ struct MovieDetailView: View {
     }
 
     private var audioStream: MediaStream? {
-        primaryMediaSource?.mediaStreams?.first(where: { $0.type == .audio })
-            ?? movie.mediaStreams?.first(where: { $0.type == .audio })
+        let streams = primaryMediaSource?.mediaStreams ?? movie.mediaStreams ?? []
+        let index = playbackOptions.selection.audioStreamIndex ?? primaryMediaSource?.defaultAudioStreamIndex
+        return streams.first(where: { $0.type == .audio && $0.index == index })
+            ?? streams.first(where: { $0.type == .audio })
     }
 
     private var technicalSummaryText: String? {
@@ -607,7 +641,11 @@ struct MovieDetailView: View {
     }
 
     private var bitrateText: String? {
-        guard let bitrate = primaryMediaSource?.bitrate, bitrate > 0 else { return nil }
+        let streamBitrate = (primaryMediaSource?.mediaStreams ?? movie.mediaStreams ?? [])
+            .filter { $0.type == .video || $0.type == .audio }
+            .compactMap(\.bitRate).reduce(0, +)
+        let bitrate = primaryMediaSource?.bitrate ?? streamBitrate
+        guard bitrate > 0 else { return nil }
 
         let megabits = Double(bitrate) / 1_000_000
         if megabits >= 10 {
@@ -648,45 +686,10 @@ struct MovieDetailView: View {
         return parts.joined(separator: " ")
     }
 
-    private var defaultAudioText: String? {
-        guard let audioStream else { return nil }
-
-        var parts: [String] = []
-        if let language = audioStream.language, !language.isEmpty {
-            parts.append(language.capitalized)
-        }
-        if let title = audioStream.displayTitle ?? audioStream.title, !title.isEmpty, !parts.contains(title) {
-            parts.append(title)
-        }
-
-        return parts.isEmpty ? nil : parts.joined(separator: " • ")
-    }
-
-    private var defaultSubtitleText: String? {
-        let streams = primaryMediaSource?.mediaStreams ?? movie.mediaStreams ?? []
-
-        guard let subtitleStream = streams.first(where: { ($0.type == .subtitle) && ($0.isDefault ?? false || $0.index == primaryMediaSource?.defaultSubtitleStreamIndex) }) else {
-            return nil
-        }
-
-        var parts: [String] = []
-        if let language = subtitleStream.language, !language.isEmpty {
-            parts.append(language.capitalized)
-        }
-        if let title = subtitleStream.displayTitle ?? subtitleStream.title, !title.isEmpty, !parts.contains(title) {
-            parts.append(title)
-        }
-        if subtitleStream.isForced == true {
-            parts.append("Forced")
-        }
-
-        return parts.isEmpty ? nil : parts.joined(separator: " • ")
-    }
-
     private var subtitleTracksText: String? {
         guard let service = sessionStore.service else { return nil }
 
-        let subtitleTitles = service.subtitleOptions(for: movie).map { option in
+        let subtitleTitles = service.subtitleOptions(for: playbackOptions.details ?? movie).map { option in
             var parts = [option.language.capitalized]
             if option.isForced {
                 parts.append("Forced")
@@ -707,7 +710,7 @@ struct MovieDetailView: View {
     }
 
     private var filenameText: String? {
-        guard let path = primaryMediaSource?.path ?? movie.path else { return nil }
+        guard let path = primaryMediaSource?.path ?? playbackOptions.details?.path ?? movie.path else { return nil }
         return path.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init)
     }
 
@@ -719,14 +722,24 @@ struct MovieDetailView: View {
             ("Container", containerText),
             ("Video Codec", videoCodecText),
             ("Audio Format", audioFormatText),
-            ("Default Audio", defaultAudioText),
-            ("Default Subtitle", defaultSubtitleText),
             ("Subtitle Tracks", subtitleTracksText)
         ]
         .compactMap { label, value in
             guard let value, !value.isEmpty else { return nil }
             return (label, value)
         }
+    }
+
+    private func reloadMediaDetails() {
+        Task { await loadMediaDetails() }
+    }
+
+    private func loadMediaDetails() async {
+        await playbackOptions.load(
+            itemID: movie.id,
+            service: sessionStore.service,
+            userID: sessionStore.activeAccount?.userID
+        )
     }
 
     @MainActor
@@ -744,10 +757,11 @@ struct MovieDetailView: View {
             let playbackSession = try await service.preparePlaybackSession(
                 for: movie,
                 userID: account.userID,
-                quality: settingsStore.playbackQuality
+                quality: settingsStore.playbackQuality,
+                trackSelection: playbackOptions.selection
             )
 
-            let player = AVPlayer(url: playbackSession.streamURL)
+            let player = try await playbackSession.makePlayer()
             if let startTimeTicks = playbackSession.startTimeTicks, startTimeTicks > 0 {
                 await seek(player: player, to: startTimeTicks)
             }
@@ -788,6 +802,20 @@ struct MovieDetailView: View {
     }
 }
 
+private struct MoviePosterControlStyle: ViewModifier {
+    static let diameter: CGFloat = 44
+
+    func body(content: Content) -> some View {
+        content
+            .font(.headline)
+            .tint(.white)
+            .buttonStyle(.plain)
+            .frame(width: Self.diameter, height: Self.diameter)
+            .contentShape(Circle())
+            .glassEffect(.regular.interactive(), in: Circle())
+    }
+}
+
 private struct NativeVideoPlayerView: UIViewControllerRepresentable {
     let player: AVPlayer
 
@@ -806,13 +834,24 @@ private struct NativeVideoPlayerView: UIViewControllerRepresentable {
 
 private struct MovieMediaInfoSheet: View {
     let rows: [(label: String, value: String)]
+    let isLoading: Bool
+    let errorMessage: String?
+    let retry: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    if rows.isEmpty {
+                    if isLoading {
+                        ProgressView("Loading file details…")
+                    }
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .foregroundStyle(.secondary)
+                        Button("Try Again", action: retry)
+                    }
+                    if rows.isEmpty && !isLoading && errorMessage == nil {
                         Text("No file details available.")
                             .foregroundStyle(.secondary)
                     } else {

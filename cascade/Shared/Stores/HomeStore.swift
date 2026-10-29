@@ -21,13 +21,8 @@ final class HomeStore: ObservableObject {
     private var loadedAccountID: String?
 
     var recentMovies: [BaseItemDto] {
-        Array(
-            movies
-                .sorted { lhs, rhs in
-                    sortDate(for: lhs) > sortDate(for: rhs)
-                }
-                .prefix(10)
-        )
+        // Keep Jellyfin's newest-first library order for the Home rail too.
+        Array(movies.prefix(10))
     }
 
     var recentResumeItems: [BaseItemDto] {
@@ -97,9 +92,5 @@ final class HomeStore: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-
-    private func sortDate(for item: BaseItemDto) -> Date {
-        item.dateLastMediaAdded ?? item.dateCreated ?? .distantPast
     }
 }

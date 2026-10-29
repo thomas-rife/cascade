@@ -2,7 +2,7 @@
 //  AppOrientation.swift
 //  cascade
 //
-//  Created by Codex on 5/31/26.
+//  Created by Thomas Rife on 5/31/26.
 //
 
 import SwiftUI

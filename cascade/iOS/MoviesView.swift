@@ -139,11 +139,7 @@ struct MoviesView: View {
     private var groupedMovies: [(title: String, movies: [BaseItemDto])] {
         switch organization {
         case .recentlyAdded:
-            let sortedMovies = homeStore.movies.sorted { lhs, rhs in
-                sortDate(for: lhs) > sortDate(for: rhs)
-            }
-
-            return [("", sortedMovies)]
+            return [("", homeStore.movies)]
 
         case .alphabetical:
             let groups = Dictionary(grouping: homeStore.movies) { movie in
@@ -174,10 +170,6 @@ struct MoviesView: View {
         movies.sorted {
             ($0.name ?? "Untitled").localizedCaseInsensitiveCompare($1.name ?? "Untitled") == .orderedAscending
         }
-    }
-
-    private func sortDate(for item: BaseItemDto) -> Date {
-        item.dateLastMediaAdded ?? item.dateCreated ?? .distantPast
     }
 
     private var alphabeticalIndexTitles: [String] {

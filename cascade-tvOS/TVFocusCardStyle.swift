@@ -2,7 +2,7 @@
 //  TVFocusCardStyle.swift
 //  cascade-tvOS
 //
-//  Created by OpenAI on 6/1/26.
+//  Created by Thomas Rife on 6/1/26.
 //
 
 import SwiftUI

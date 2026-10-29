@@ -121,11 +121,7 @@ struct ShowsView: View {
     private var groupedShows: [(title: String, shows: [BaseItemDto])] {
         switch organization {
         case .recentlyAdded:
-            let sortedShows = homeStore.shows.sorted { lhs, rhs in
-                sortDate(for: lhs) > sortDate(for: rhs)
-            }
-
-            return [("", sortedShows)]
+            return [("", homeStore.shows)]
 
         case .alphabetical:
             let groups = Dictionary(grouping: homeStore.shows) { show in
@@ -156,10 +152,6 @@ struct ShowsView: View {
         shows.sorted {
             ($0.name ?? "Untitled").localizedCaseInsensitiveCompare($1.name ?? "Untitled") == .orderedAscending
         }
-    }
-
-    private func sortDate(for item: BaseItemDto) -> Date {
-        item.dateLastMediaAdded ?? item.dateCreated ?? .distantPast
     }
 }
 
