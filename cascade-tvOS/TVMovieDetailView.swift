@@ -197,7 +197,7 @@ struct TVMovieDetailView: View {
                 .fill(Color.secondary.opacity(0.12))
 
             if let posterURL {
-                AsyncImage(url: posterURL) { phase in
+                CachedAsyncImage(url: posterURL) { phase in
                     switch phase {
                     case let .success(image):
                         image

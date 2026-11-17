@@ -139,7 +139,7 @@ private struct TVLandscapeMediaCard: View {
                     .fill(Color.secondary.opacity(0.12))
 
                 if let artworkURL {
-                    AsyncImage(url: artworkURL) { phase in
+                    CachedAsyncImage(url: artworkURL) { phase in
                         switch phase {
                         case let .success(image):
                             image

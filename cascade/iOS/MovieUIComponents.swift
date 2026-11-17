@@ -189,7 +189,7 @@ struct PosterArtworkBox: View {
     @ViewBuilder
     private var content: some View {
         if let posterURL {
-            AsyncImage(url: posterURL) { phase in
+            CachedAsyncImage(url: posterURL) { phase in
                 switch phase {
                 case let .success(image):
                     image
@@ -519,7 +519,7 @@ struct MovieDetailView: View {
     @ViewBuilder
     private var poster: some View {
         if let detailPosterURL {
-            AsyncImage(url: detailPosterURL) { phase in
+            CachedAsyncImage(url: detailPosterURL) { phase in
                 switch phase {
                 case let .success(image):
                     GeometryReader { proxy in

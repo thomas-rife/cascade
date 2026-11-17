@@ -399,7 +399,7 @@ struct ShowDetailView: View {
     @ViewBuilder
     private var poster: some View {
         if let posterURL {
-            AsyncImage(url: posterURL) { phase in
+            CachedAsyncImage(url: posterURL) { phase in
                 switch phase {
                 case let .success(image):
                     GeometryReader { proxy in
@@ -518,7 +518,7 @@ private struct EpisodeCard: View {
                         .fill(Color.secondary.opacity(0.12))
 
                     if let artworkURL {
-                        AsyncImage(url: artworkURL) { phase in
+                        CachedAsyncImage(url: artworkURL) { phase in
                             switch phase {
                             case let .success(image):
                                 image

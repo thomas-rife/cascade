@@ -136,7 +136,7 @@ private struct SearchResultRow: View {
     private var thumbnail: some View {
         Group {
             if let posterURL {
-                AsyncImage(url: posterURL) { phase in
+                CachedAsyncImage(url: posterURL) { phase in
                     switch phase {
                     case let .success(image):
                         image

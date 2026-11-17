@@ -93,7 +93,7 @@ struct TVShowDetailView: View {
                 .fill(Color.secondary.opacity(0.12))
 
             if let posterURL {
-                AsyncImage(url: posterURL) { phase in
+                CachedAsyncImage(url: posterURL) { phase in
                     switch phase {
                     case let .success(image):
                         image
@@ -242,7 +242,7 @@ private struct TVEpisodeCard: View {
                 .fill(Color.secondary.opacity(0.12))
 
             if let thumbURL = sessionStore.service?.thumbURL(for: episode, maxHeight: 320) {
-                AsyncImage(url: thumbURL) { phase in
+                CachedAsyncImage(url: thumbURL) { phase in
                     switch phase {
                     case let .success(image):
                         image

@@ -267,7 +267,7 @@ private struct ResumePlaybackCard: View {
     @ViewBuilder
     private var artwork: some View {
         if let artworkURL = sessionStore.service?.landscapeArtworkURL(for: item) {
-            AsyncImage(url: artworkURL) { phase in
+            CachedAsyncImage(url: artworkURL) { phase in
                 switch phase {
                 case let .success(image):
                     image

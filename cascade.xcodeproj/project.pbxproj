@@ -29,6 +29,7 @@
 				Shared/Stores/SessionStore.swift,
 				Shared/Stores/SettingsStore.swift,
 				Shared/Views/MovieTrackSelector.swift,
+				Shared/Views/CachedAsyncImage.swift,
 			);
 			target = 6878CE162FCDE6DB00412446 /* cascade-tvOS */;
 		};
