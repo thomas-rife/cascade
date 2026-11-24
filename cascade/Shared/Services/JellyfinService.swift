@@ -150,6 +150,14 @@ final class JellyfinService {
         return result.items ?? []
     }
 
+    func nextEpisode(userID: String, seriesID: String) async throws -> BaseItemDto? {
+        let result = try await client.send(Paths.getNextUp(parameters: .init(
+            userID: userID, limit: 1, seriesID: seriesID, enableUserData: true,
+            isDisableFirstEpisode: false, enableResumable: true, enableRewatching: true
+        ))).value
+        return result.items?.first
+    }
+
     func fetchEpisodes(userID: String, seriesID: String, seasonID: String) async throws -> [BaseItemDto] {
         let result = try await client.send(
             Paths.getEpisodes(

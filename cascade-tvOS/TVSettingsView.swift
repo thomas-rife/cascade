@@ -62,6 +62,15 @@ struct TVSettingsView: View {
                                 }
                             }
                             .tint(.primary)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    let isCurrentServer = serverURL == sessionStore.activeServer
+                                    sessionStore.removeServer(serverURL)
+                                    if isCurrentServer { dismiss() }
+                                } label: {
+                                    Label("Remove Server", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }

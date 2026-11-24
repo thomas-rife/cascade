@@ -16,6 +16,12 @@ struct TVShowDetailView: View {
     @EnvironmentObject private var sessionStore: SessionStore
     @EnvironmentObject private var settingsStore: SettingsStore
 
+    @State private var player: AVPlayer?
+    @State private var playbackReporter: TVPlaybackSessionReporter?
+    @State private var isPresentingPlayer = false
+    @State private var isPreparingPlayback = false
+    @State private var playbackError: String?
+
     @State private var seasons: [BaseItemDto] = []
     @State private var episodesBySeasonID: [String: [BaseItemDto]] = [:]
     @State private var isLoadingEpisodes = false
@@ -31,10 +37,22 @@ struct TVShowDetailView: View {
                         Text(show.name ?? "Untitled")
                             .font(.system(size: 42, weight: .bold))
 
-                        if let metaLine {
-                            Text(metaLine)
+                        if let year = show.productionYear {
+                            Text(String(year))
                                 .font(.title3)
                                 .foregroundStyle(.secondary)
+                        }
+
+                        Button {
+                            Task { await startPlayback() }
+                        } label: {
+                            Label(isPreparingPlayback ? "Loading…" : "Play", systemImage: "play.fill")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isPreparingPlayback || firstEpisode == nil)
+
+                        if let playbackError {
+                            Text(playbackError).foregroundStyle(.red)
                         }
 
                         if let overview = show.overview, !overview.isEmpty {
@@ -60,7 +78,8 @@ struct TVShowDetailView: View {
                             if let seasonID = season.id, let episodes = episodesBySeasonID[seasonID], !episodes.isEmpty {
                                 TVEpisodeRailSection(
                                     title: season.name ?? "Season",
-                                    episodes: episodes
+                                    episodes: episodes,
+                                    play: { episode in Task { await startPlayback(episode) } }
                                 )
                             }
                         }
@@ -70,20 +89,26 @@ struct TVShowDetailView: View {
             .padding(60)
         }
 //        .navigationTitle(show.name ?? "Show")
+        .fullScreenCover(isPresented: $isPresentingPlayer, onDismiss: stopPlayback) {
+            if let player {
+                TVVideoPlayerView(player: player)
+                    .ignoresSafeArea()
+            }
+        }
         .task(id: show.id) {
             await loadEpisodes()
         }
     }
 
-    private var metaLine: String? {
-        var values: [String] = []
-        if let year = show.productionYear {
-            values.append(String(year))
+    private var firstEpisode: BaseItemDto? {
+        let ordered = seasons.sorted { ($0.indexNumber ?? Int.max) < ($1.indexNumber ?? Int.max) }
+        let regular = ordered.filter { $0.indexNumber != 0 }
+        for season in regular + ordered.filter({ $0.indexNumber == 0 }) {
+            if let id = season.id, let first = episodesBySeasonID[id]?.min(by: {
+                ($0.indexNumber ?? Int.max) < ($1.indexNumber ?? Int.max)
+            }) { return first }
         }
-        if let status = show.status, !status.isEmpty {
-            values.append(status)
-        }
-        return values.isEmpty ? nil : values.joined(separator: " • ")
+        return nil
     }
 
     @ViewBuilder
@@ -160,137 +185,32 @@ struct TVShowDetailView: View {
             episodeError = error.localizedDescription
         }
     }
-}
-
-private struct TVEpisodeRailSection: View {
-    let title: String
-    let episodes: [BaseItemDto]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(title)
-                .font(.title2.weight(.semibold))
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 24) {
-                    ForEach(Array(episodes.enumerated()), id: \.offset) { _, episode in
-                        TVEpisodeCard(episode: episode)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 28)
-            }
-        }
-    }
-}
-
-private struct TVEpisodeCard: View {
-    let episode: BaseItemDto
-
-    @EnvironmentObject private var sessionStore: SessionStore
-    @EnvironmentObject private var settingsStore: SettingsStore
-
-    @State private var player: AVPlayer?
-    @State private var playbackReporter: TVPlaybackSessionReporter?
-    @State private var isPresentingPlayer = false
-    @State private var isPreparingPlayback = false
-    @State private var playbackError: String?
-
-    var body: some View {
-        Button {
-            Task {
-                await startPlayback()
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                artwork
-
-                Text(episodeTitle)
-                    .font(.headline)
-                    .lineLimit(2)
-
-                if let playbackError {
-                    Text(playbackError)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .lineLimit(2)
-                }
-            }
-            .frame(width: 360, alignment: .leading)
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
-        .disabled(isPreparingPlayback)
-        .fullScreenCover(isPresented: $isPresentingPlayer, onDismiss: stopPlayback) {
-            if let player {
-                TVVideoPlayerView(player: player)
-                    .ignoresSafeArea()
-            }
-        }
-    }
-
-    private var episodeTitle: String {
-        if let index = episode.indexNumber {
-            return "E\(index) • \(episode.name ?? "Untitled")"
-        }
-        return episode.name ?? "Untitled"
-    }
-
-    private var artwork: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.secondary.opacity(0.12))
-
-            if let thumbURL = sessionStore.service?.thumbURL(for: episode, maxHeight: 320) {
-                CachedAsyncImage(url: thumbURL) { phase in
-                    switch phase {
-                    case let .success(image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        placeholder
-                    case .empty:
-                        ZStack {
-                            placeholder
-                            ProgressView()
-                        }
-                    @unknown default:
-                        placeholder
-                    }
-                }
-            } else {
-                placeholder
-            }
-        }
-        .frame(width: 360, height: 202)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .focusEffectDisabled()
-        .tvFocusCardStyle()
-    }
-
-    private var placeholder: some View {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(Color.secondary.opacity(0.18))
-            .overlay {
-                Image(systemName: "tv")
-                    .font(.system(size: 36))
-                    .foregroundStyle(.secondary)
-            }
-    }
-
     @MainActor
-    private func startPlayback() async {
+    private func startPlayback(_ selected: BaseItemDto? = nil) async {
         guard let service = sessionStore.service, let account = sessionStore.activeAccount else {
             playbackError = "Missing active session."
             return
         }
 
+        guard !isPreparingPlayback else { return }
         isPreparingPlayback = true
         playbackError = nil
         defer { isPreparingPlayback = false }
 
         do {
+            let episode: BaseItemDto
+            if let selected {
+                episode = selected
+            } else if let seriesID = show.id,
+                      let next = try await service.nextEpisode(userID: account.userID, seriesID: seriesID) {
+                episode = next
+            } else if let firstEpisode {
+                episode = firstEpisode
+            } else {
+                playbackError = "No episodes are available."
+                return
+            }
+
             let playbackSession = try await service.preparePlaybackSession(
                 for: episode,
                 userID: account.userID,
@@ -334,4 +254,102 @@ private struct TVEpisodeCard: View {
             }
         }
     }
+
+}
+
+private struct TVEpisodeRailSection: View {
+    let title: String
+    let episodes: [BaseItemDto]
+    let play: (BaseItemDto) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(title)
+                .font(.title2.weight(.semibold))
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: TVCardLayout.spacing) {
+                    ForEach(Array(episodes.enumerated()), id: \.offset) { _, episode in
+                        TVEpisodeCard(episode: episode, play: { play(episode) })
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 28)
+            }
+        }
+    }
+}
+
+private struct TVEpisodeCard: View {
+    let episode: BaseItemDto
+    let play: () -> Void
+
+    @EnvironmentObject private var sessionStore: SessionStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Button(action: play) {
+                artwork
+            }
+            .buttonStyle(.card)
+            .accessibilityLabel(episodeTitle)
+
+            Text(episodeTitle)
+                .font(.headline)
+                .lineLimit(2, reservesSpace: true)
+
+
+        }
+        .frame(width: 360, alignment: .leading)
+
+    }
+
+    private var episodeTitle: String {
+        if let index = episode.indexNumber {
+            return "E\(index) • \(episode.name ?? "Untitled")"
+        }
+        return episode.name ?? "Untitled"
+    }
+
+    private var artwork: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.secondary.opacity(0.12))
+
+            if let thumbURL = sessionStore.service?.thumbURL(for: episode, maxHeight: 320) {
+                CachedAsyncImage(url: thumbURL) { phase in
+                    switch phase {
+                    case let .success(image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        placeholder
+                    case .empty:
+                        ZStack {
+                            placeholder
+                            ProgressView()
+                        }
+                    @unknown default:
+                        placeholder
+                    }
+                }
+            } else {
+                placeholder
+            }
+        }
+        .frame(width: 360, height: 202)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var placeholder: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(Color.secondary.opacity(0.18))
+            .overlay {
+                Image(systemName: "tv")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.secondary)
+            }
+    }
+
 }

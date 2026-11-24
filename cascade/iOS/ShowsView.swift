@@ -86,6 +86,7 @@ struct ShowsView: View {
                         }
                         .padding(.vertical)
                     }
+                    .scrollEdgeEffectStyle(.soft, for: .top)
                     .refreshable {
                         homeStore.reset()
                         await homeStore.load(using: sessionStore)

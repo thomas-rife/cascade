@@ -114,6 +114,7 @@ struct MoviePosterGridView: View {
             }
             .padding()
         }
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .navigationTitle(title)
     }
 }
@@ -390,7 +391,7 @@ struct MovieDetailView: View {
         }
         .sheet(isPresented: $isPresentingMediaInfo) {
             MovieMediaInfoSheet(
-                rows: mediaInfoRows,
+                rows: fileInfo.rows,
                 isLoading: playbackOptions.isLoading,
                 errorMessage: playbackOptions.errorMessage,
                 retry: reloadMediaDetails
@@ -451,8 +452,8 @@ struct MovieDetailView: View {
 
 //                Spacer(minLength: 12)
 
-                if let heroTechnicalSummaryText {
-                    Text(heroTechnicalSummaryText)
+                if let summary = fileInfo.summary {
+                    Text(summary)
                         .font(.caption)
                         .multilineTextAlignment(.trailing)
                         .lineLimit(2)
@@ -589,145 +590,8 @@ struct MovieDetailView: View {
         }
     }
 
-    private var primaryMediaSource: MediaSourceInfo? {
-        playbackOptions.mediaSource ?? movie.mediaSources?.first
-    }
-
-    private var videoStream: MediaStream? {
-        primaryMediaSource?.mediaStreams?.first(where: { $0.type == .video })
-            ?? movie.mediaStreams?.first(where: { $0.type == .video })
-    }
-
-    private var audioStream: MediaStream? {
-        let streams = primaryMediaSource?.mediaStreams ?? movie.mediaStreams ?? []
-        let index = playbackOptions.selection.audioStreamIndex ?? primaryMediaSource?.defaultAudioStreamIndex
-        return streams.first(where: { $0.type == .audio && $0.index == index })
-            ?? streams.first(where: { $0.type == .audio })
-    }
-
-    private var technicalSummaryText: String? {
-        let parts = [resolutionText, bitrateText, audioFormatText]
-            .compactMap { $0 }
-
-        guard !parts.isEmpty else { return nil }
-        return parts.joined(separator: " • ")
-    }
-
-    private var heroTechnicalSummaryText: String? {
-        let parts = [resolutionText, audioFormatText]
-            .compactMap { $0 }
-
-        guard !parts.isEmpty else { return nil }
-        return parts.joined(separator: " • ")
-    }
-
-    private var resolutionText: String? {
-        let width = videoStream?.width ?? movie.width
-        let height = videoStream?.height ?? movie.height
-
-        guard let width, let height else { return nil }
-
-        if width >= 3800 || height >= 2100 {
-            return "4K"
-        } else if width >= 2500 || height >= 1400 {
-            return "1440p"
-        } else if width >= 1900 || height >= 1000 {
-            return "1080p"
-        } else if width >= 1200 || height >= 700 {
-            return "720p"
-        } else {
-            return "\(height)p"
-        }
-    }
-
-    private var bitrateText: String? {
-        let streamBitrate = (primaryMediaSource?.mediaStreams ?? movie.mediaStreams ?? [])
-            .filter { $0.type == .video || $0.type == .audio }
-            .compactMap(\.bitRate).reduce(0, +)
-        let bitrate = primaryMediaSource?.bitrate ?? streamBitrate
-        guard bitrate > 0 else { return nil }
-
-        let megabits = Double(bitrate) / 1_000_000
-        if megabits >= 10 {
-            return String(format: "%.0f Mbps", megabits)
-        } else {
-            return String(format: "%.1f Mbps", megabits)
-        }
-    }
-
-    private var audioFormatText: String? {
-        guard let audioStream else { return nil }
-
-        var parts: [String] = []
-
-        if let codec = audioStream.codec?.uppercased(), !codec.isEmpty {
-            parts.append(codec)
-        }
-
-        if let channels = audioStream.channels {
-            let channelText: String
-            switch channels {
-            case 1:
-                channelText = "Mono"
-            case 2:
-                channelText = "Stereo"
-            case 6:
-                channelText = "5.1"
-            case 8:
-                channelText = "7.1"
-            default:
-                channelText = "\(channels)ch"
-            }
-
-            parts.append(channelText)
-        }
-
-        guard !parts.isEmpty else { return nil }
-        return parts.joined(separator: " ")
-    }
-
-    private var subtitleTracksText: String? {
-        guard let service = sessionStore.service else { return nil }
-
-        let subtitleTitles = service.subtitleOptions(for: playbackOptions.details ?? movie).map { option in
-            var parts = [option.language.capitalized]
-            if option.isForced {
-                parts.append("Forced")
-            }
-            return parts.joined(separator: " ")
-        }
-
-        guard !subtitleTitles.isEmpty else { return nil }
-        return subtitleTitles.joined(separator: ", ")
-    }
-
-    private var containerText: String? {
-        primaryMediaSource?.container?.uppercased() ?? movie.container?.uppercased()
-    }
-
-    private var videoCodecText: String? {
-        videoStream?.codec?.uppercased()
-    }
-
-    private var filenameText: String? {
-        guard let path = primaryMediaSource?.path ?? playbackOptions.details?.path ?? movie.path else { return nil }
-        return path.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init)
-    }
-
-    private var mediaInfoRows: [(label: String, value: String)] {
-        [
-            ("Filename", filenameText),
-            ("Resolution", resolutionText),
-            ("Bitrate", bitrateText),
-            ("Container", containerText),
-            ("Video Codec", videoCodecText),
-            ("Audio Format", audioFormatText),
-            ("Subtitle Tracks", subtitleTracksText)
-        ]
-        .compactMap { label, value in
-            guard let value, !value.isEmpty else { return nil }
-            return (label, value)
-        }
+    private var fileInfo: MovieFileInfo {
+        playbackOptions.fileInfo(for: movie, service: sessionStore.service)
     }
 
     private func reloadMediaDetails() {

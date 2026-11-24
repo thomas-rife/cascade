@@ -36,27 +36,25 @@ struct TVServerConnectView: View {
                     Text("Server Address")
                         .font(.title3.weight(.semibold))
 
-                    TextField("Enter an address", text: $serverURL)
+                    TextField("http://100.x.x.x:8096", text: $serverURL)
                         .font(.title3)
                         .disabled(isConnecting)
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .keyboardType(.URL)
+
+                    Text("Include http:// or https:// and the server’s port. For a Tailscale address, connect Apple TV to Tailscale first.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                     
                     Button {
                         Task {
-                            let trimmed = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
-
-                            guard let serverURL = URL(string: trimmed) else {
-                                errorMessage = "Enter a valid server URL."
-                                return
-                            }
-
                             isConnecting = true
                             errorMessage = nil
                             defer { isConnecting = false }
 
                             do {
+                                let serverURL = try SessionStore.serverURL(from: serverURL)
                                 let device = sessionStore.deviceDetails()
                                 try await sessionStore.connect(
                                     to: serverURL,
@@ -65,7 +63,7 @@ struct TVServerConnectView: View {
                                     appVersion: device.appVersion
                                 )
                             } catch {
-                                errorMessage = error.localizedDescription
+                                errorMessage = SessionStore.connectionErrorMessage(for: error)
                             }
                         }
                     } label: {

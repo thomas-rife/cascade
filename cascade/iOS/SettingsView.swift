@@ -31,9 +31,9 @@ struct SettingsView: View {
                             step: 1
                         )
 
-//                        Text("This quality will be used when new playback starts.")
-//                            .font(.footnote)
-//                            .foregroundStyle(.secondary)
+                        Text("Applies when starting playback. Lower bitrates use less bandwidth and may require server transcoding.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 4)
                 }
@@ -62,6 +62,15 @@ struct SettingsView: View {
                                 }
                             }
                             .tint(.primary)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    let isCurrentServer = serverURL == sessionStore.activeServer
+                                    sessionStore.removeServer(serverURL)
+                                    if isCurrentServer { dismiss() }
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }

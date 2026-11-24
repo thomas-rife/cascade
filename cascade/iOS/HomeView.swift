@@ -79,6 +79,7 @@ struct HomeView: View {
                         }
                         .padding(.vertical)
                     }
+                    .scrollEdgeEffectStyle(.soft, for: .top)
                     .refreshable {
                         homeStore.reset()
                         await homeStore.load(using: sessionStore)
@@ -163,6 +164,7 @@ private struct RecentlyWatchedView: View {
             }
             .padding()
         }
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .navigationTitle("Recently Watched")
     }
 }

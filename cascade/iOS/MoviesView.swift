@@ -81,6 +81,7 @@ struct MoviesView: View {
                                 }
                                 .padding(.vertical)
                             }
+                            .scrollEdgeEffectStyle(.soft, for: .top)
                             if organization == .alphabetical, !alphabeticalIndexTitles.isEmpty {
                                 VStack(spacing: 4) {
                                     ForEach(alphabeticalIndexTitles, id: \.self) { title in

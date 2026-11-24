@@ -8,6 +8,10 @@
 import SwiftUI
 import JellyfinAPI
 
+enum TVCardLayout {
+    static let spacing: CGFloat = 48
+}
+
 enum TVMediaKind {
     case movie
     case show
@@ -20,35 +24,42 @@ struct TVMediaGridView: View {
 
     @EnvironmentObject private var sessionStore: SessionStore
 
-    private let columns = Array(repeating: GridItem(.fixed(220), spacing: 40), count: 7)
+    private let columns = [GridItem(.adaptive(minimum: 220, maximum: 220), spacing: TVCardLayout.spacing)]
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, alignment: .center, spacing: 36) {
-                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                    NavigationLink {
-                        switch mediaKind {
-                        case .movie:
-                            TVMovieDetailView(
-                                movie: item,
-                                posterURL: sessionStore.service?.posterURL(for: item, maxHeight: 1200)
-                            )
-                        case .show:
-                            TVShowDetailView(
-                                show: item,
-                                posterURL: sessionStore.service?.posterURL(for: item, maxHeight: 1200)
+            LazyVGrid(columns: columns, alignment: .center, spacing: TVCardLayout.spacing) {
+                ForEach(items, id: \.id) { item in
+                    VStack(alignment: .leading, spacing: 18) {
+                        NavigationLink {
+                            switch mediaKind {
+                            case .movie:
+                                TVMovieDetailView(
+                                    movie: item,
+                                    posterURL: sessionStore.service?.posterURL(for: item, maxHeight: 1200)
+                                )
+                            case .show:
+                                TVShowDetailView(
+                                    show: item,
+                                    posterURL: sessionStore.service?.posterURL(for: item, maxHeight: 1200)
+                                )
+                            }
+                        } label: {
+                            TVPosterCard(
+                                posterURL: sessionStore.service?.posterURL(for: item, maxHeight: 600),
+                                systemImage: mediaKind == .movie ? "film" : "tv"
                             )
                         }
-                    } label: {
-                        TVPosterCard(
-//                            title: item.name ?? "Untitled",
-                            subtitle: item.productionYear.map(String.init),
-                            posterURL: sessionStore.service?.posterURL(for: item, maxHeight: 600),
-                            systemImage: mediaKind == .movie ? "film" : "tv"
-                        )
+                        .buttonStyle(.card)
+                        .accessibilityLabel(item.name ?? "Untitled")
+
+                        if let year = item.productionYear {
+                            Text(String(year))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    .buttonStyle(.card)
-//                    .focusEffectDisabled()
+                    .frame(width: 220, alignment: .leading)
                 }
             }
             .padding(.horizontal, 84)
@@ -59,31 +70,10 @@ struct TVMediaGridView: View {
 }
 
 private struct TVPosterCard: View {
-//    let title: String
-    let subtitle: String?
     let posterURL: URL?
     let systemImage: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            poster
-
-            VStack(alignment: .leading, spacing: 4) {
-//                Text(title)
-//                    .font(.headline)
-//                    .lineLimit(2)
-
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .frame(width: 220, alignment: .leading)
-    }
-
-    private var poster: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.secondary.opacity(0.12))
@@ -110,10 +100,8 @@ private struct TVPosterCard: View {
                 placeholder
             }
         }
-//        .frame(width: 220, height: 330)
-//        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-//        .focusEffectDisabled()
-//        .tvFocusCardStyle()
+        .frame(width: 220, height: 330)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     private var placeholder: some View {

@@ -21,77 +21,33 @@ struct TVMovieDetailView: View {
     @State private var isPresentingPlayer = false
     @State private var isPreparingPlayback = false
     @State private var playbackError: String?
+    @State private var isSynopsisExpanded = false
+    @State private var isPresentingFileInfo = false
     @StateObject private var playbackOptions = MoviePlaybackOptions()
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                HStack(alignment: .top, spacing: 40) {
-                    poster
-
-                    VStack(alignment: .leading, spacing: 20) {
-                        Text(movie.name ?? "Untitled")
-                            .font(.title)
-
-                        if let metaLine {
-                            Text(metaLine)
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                        }
-                        
-                        if let metadata {
-                            Text(metadata)
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        MovieTrackSelector(options: playbackOptions) {
-                            Task { await loadMediaDetails() }
-                        }
-
-                        Button {
-                            Task {
-                                await startPlayback()
-                            }
-                        } label: {
-                            HStack(spacing: 10) {
-                                if isPreparingPlayback {
-                                    ProgressView()
-                                }
-
-                                Text(isPreparingPlayback ? "Loading..." : "Play")
-                                    .font(.title3.weight(.semibold))
-                            }
-                            .frame(width: 240)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .disabled(isPreparingPlayback)
-
-                        if let playbackError {
-                            Text(playbackError)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                        }
-
-                        if let overview = movie.overview, !overview.isEmpty {
-                            Text(overview)
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                                .lineSpacing(6)
-                        }
-                    }
+            HStack(alignment: .top, spacing: 52) {
+                poster
+                movieSummary
                     .frame(maxWidth: .infinity, alignment: .leading)
-                }
             }
-            .padding(60)
+            .padding(.horizontal, 64)
+            .padding(.vertical, 64)
         }
-//        .navigationTitle(movie.name ?? "Movie")
         .fullScreenCover(isPresented: $isPresentingPlayer, onDismiss: stopPlayback) {
             if let player {
                 TVVideoPlayerView(player: player)
                     .ignoresSafeArea()
             }
+        }
+        .sheet(isPresented: $isPresentingFileInfo) {
+            TVMovieFileInfoSheet(
+                fileInfo: fileInfo,
+                isLoading: playbackOptions.isLoading,
+                errorMessage: playbackOptions.errorMessage,
+                retry: { Task { await loadMediaDetails() } }
+            )
         }
         .task(id: movie.id) {
             await loadMediaDetails()
@@ -123,71 +79,144 @@ struct TVMovieDetailView: View {
         return "\(minutes)m"
     }
     
-    private var metadata: String? {
-        let values = [resolutionText, audioFormatText]
-            .compactMap { $0 }
+    private var movieSummary: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            HStack(alignment: .top, spacing: 32) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(movie.name ?? "Untitled")
+                        .font(.largeTitle.bold())
 
-        return values.isEmpty ? nil : values.joined(separator: " • ")
-    }
-    
-    private var primaryMediaSource: MediaSourceInfo? {
-        playbackOptions.mediaSource ?? movie.mediaSources?.first
-    }
+                    ForEach([metaLine, fileInfo.summary].compactMap { $0 }, id: \.self) { line in
+                        Text(line)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
-    private var videoStream: MediaStream? {
-        primaryMediaSource?.mediaStreams?.first(where: { $0.type == .video })
-            ?? movie.mediaStreams?.first(where: { $0.type == .video })
-    }
-
-    private var audioStream: MediaStream? {
-        let streams = primaryMediaSource?.mediaStreams ?? movie.mediaStreams ?? []
-        let index = playbackOptions.selection.audioStreamIndex ?? primaryMediaSource?.defaultAudioStreamIndex
-        return streams.first(where: { $0.type == .audio && $0.index == index })
-            ?? streams.first(where: { $0.type == .audio })
-    }
-
-    private var resolutionText: String? {
-        let width = videoStream?.width ?? movie.width
-        let height = videoStream?.height ?? movie.height
-
-        guard let width, let height else { return nil }
-
-        if width >= 3800 || height >= 2100 {
-            return "4K"
-        } else if width >= 2500 || height >= 1400 {
-            return "1440p"
-        } else if width >= 1900 || height >= 1000 {
-            return "1080p"
-        } else if width >= 1200 || height >= 700 {
-            return "720p"
-        } else {
-            return "\(height)p"
-        }
-    }
-
-    private var audioFormatText: String? {
-        guard let audioStream else { return nil }
-
-        var parts: [String] = []
-
-        if let codec = audioStream.codec?.uppercased(), !codec.isEmpty {
-            parts.append(codec)
-        }
-
-        if let channels = audioStream.channels {
-            let channelText: String
-            switch channels {
-            case 1: channelText = "Mono"
-            case 2: channelText = "Stereo"
-            case 6: channelText = "5.1"
-            case 8: channelText = "7.1"
-            default: channelText = "\(channels)ch"
+                Spacer(minLength: 0)
+                Button {
+                    isPresentingFileInfo = true
+                } label: {
+                    Label("File Info", systemImage: "info.circle")
+                }
+                .buttonStyle(.bordered)
             }
 
-            parts.append(channelText)
-        }
+            HStack(spacing: 24) {
+                Button {
+                    Task { await startPlayback() }
+                } label: {
+                    if isPreparingPlayback {
+                        ProgressView()
+                    } else {
+                        Label((movie.userData?.playbackPositionTicks ?? 0) > 0 ? "Resume" : "Play",
+                              systemImage: "play.fill")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isPreparingPlayback)
 
-        return parts.isEmpty ? nil : parts.joined(separator: " ")
+                MovieTrackSelector(options: playbackOptions) {
+                    Task { await loadMediaDetails() }
+                }
+            }
+
+            if let playbackError {
+                Text(playbackError)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+
+            if let overview = playbackOptions.details?.overview ?? movie.overview, !overview.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(overview)
+                        .lineLimit(isSynopsisExpanded ? nil : 3)
+                        .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Button {
+                        isSynopsisExpanded.toggle()
+                    } label: {
+                        Label(isSynopsisExpanded ? "Show Less" : "Read More",
+                              systemImage: isSynopsisExpanded ? "chevron.up" : "chevron.down")
+                    }
+                    .font(.callout)
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            technicalDetails
+
+            VStack(alignment: .leading, spacing: 10) {
+                credit("Genre", names: genres)
+                credit("Directed by", names: people(ofType: .director))
+                credit("Starring", names: Array(people(ofType: .actor).prefix(5)))
+            }
+        }
+    }
+
+    private var fileInfo: MovieFileInfo {
+        playbackOptions.fileInfo(for: movie, service: sessionStore.service)
+    }
+
+    @ViewBuilder
+    private var technicalDetails: some View {
+        let info = fileInfo
+        let rows = info.technicalRows
+        if !rows.isEmpty || info.defaultAudioTrackText != nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Technical Details")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+
+                HStack(alignment: .top, spacing: 32) {
+                    ForEach(rows, id: \.label) { row in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(row.label)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(row.value)
+                                .font(.callout)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+
+                if let track = info.defaultAudioTrackText {
+                    credit("Default Audio Track", names: [track])
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(24)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        }
+    }
+
+    private var genres: [String] {
+        if let genres = playbackOptions.details?.genres ?? movie.genres, !genres.isEmpty {
+            return genres
+        }
+        return (playbackOptions.details?.genreItems ?? movie.genreItems ?? []).compactMap(\.name)
+    }
+
+    private func people(ofType type: PersonKind) -> [String] {
+        (playbackOptions.details?.people ?? movie.people ?? [])
+            .filter { $0.type == type }
+            .compactMap(\.name)
+    }
+
+    @ViewBuilder
+    private func credit(_ label: String, names: [String]) -> some View {
+        if !names.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                    .font(.callout.weight(.semibold))
+                Text(names.joined(separator: ", "))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+        }
     }
 
     @ViewBuilder
@@ -296,5 +325,69 @@ struct TVMovieDetailView: View {
                 continuation.resume()
             }
         }
+    }
+}
+
+private struct TVMovieFileInfoSheet: View {
+    let fileInfo: MovieFileInfo
+    let isLoading: Bool
+    let errorMessage: String?
+    let retry: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            HStack {
+                Label("File Info", systemImage: "info.circle")
+                    .font(.title2.bold())
+                    .accessibilityAddTraits(.isHeader)
+
+                Spacer()
+                Button("Done") { dismiss() }
+                    .buttonStyle(.bordered)
+            }
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(fileInfo.rows, id: \.label) { row in
+                        infoRow(row.label, value: row.value)
+                    }
+
+                    if let track = fileInfo.defaultAudioTrackText {
+                        infoRow("Default Audio Track", value: track)
+                    }
+
+                    if isLoading {
+                        ProgressView("Loading file details…")
+                    } else if let errorMessage {
+                        Text(errorMessage)
+                            .foregroundStyle(.secondary)
+                        Button("Try Again", action: retry)
+                            .buttonStyle(.bordered)
+                    } else if fileInfo.rows.isEmpty {
+                        Text("No file details available.")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 12)
+            }
+            .focusable()
+        }
+        .padding(48)
+    }
+
+    private func infoRow(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.callout)
+        }
+        .accessibilityElement(children: .combine)
     }
 }

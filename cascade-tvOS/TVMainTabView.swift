@@ -24,6 +24,8 @@ struct TVMainTabView: View {
             TVShowsView(homeStore: homeStore)
                 .tabItem {
                     Label("Shows", systemImage: "tv")
+                        .symbolRenderingMode(.monochrome)
+                        .environment(\.symbolVariants, .none)
                 }
             
 //            TVShowsView(homeStore: homeStore)

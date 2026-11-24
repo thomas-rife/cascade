@@ -1,10 +1,12 @@
 {
   "images" : [
     {
+      "filename" : "TopShelf-2320.png",
       "idiom" : "tv",
       "scale" : "1x"
     },
     {
+      "filename" : "TopShelf-4640.png",
       "idiom" : "tv",
       "scale" : "2x"
     }

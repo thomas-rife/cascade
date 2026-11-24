@@ -72,6 +72,7 @@ struct SearchView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .scrollEdgeEffectStyle(.soft, for: .top)
                 }
             }
             .navigationTitle("Search")

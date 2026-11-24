@@ -31,19 +31,15 @@ struct ServerConnectView: View {
             
             Button {
                 Task {
-                    let trimmed = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                    
-                    guard let serverURL = URL(string: trimmed) else {
-                        return
-                    }
                     isConnecting = true
                     errorMessage = nil
                     defer { isConnecting = false }
                     do {
+                        let serverURL = try SessionStore.serverURL(from: serverURL)
                         let device = sessionStore.deviceDetails()
                         try await sessionStore.connect(to: serverURL, deviceName: device.deviceName, deviceID: device.deviceID, appVersion: device.appVersion)
                     } catch {
-                        errorMessage = error.localizedDescription
+                        errorMessage = SessionStore.connectionErrorMessage(for: error)
                     }
                 }
             } label: {

@@ -39,7 +39,6 @@ struct TVHomeView: View {
                                         sessionStore.service?.landscapeArtworkURL(for: item, maxWidth: 760, maxHeight: 428)
                                     }
                                 )
-                                .buttonStyle(.card)
                             }
                             
 
@@ -51,7 +50,6 @@ struct TVHomeView: View {
                                         sessionStore.service?.landscapeArtworkURL(for: item, maxWidth: 760, maxHeight: 428)
                                     }
                                 )
-                                .buttonStyle(.card)
                             }
                         }
                         .padding(.horizontal, 60)
@@ -83,19 +81,17 @@ private struct TVLandscapeRailSection: View {
                 .font(.title2.weight(.semibold))
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 28) {
+                HStack(spacing: TVCardLayout.spacing) {
                     ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                         TVLandscapeMediaCard(
                             item: item,
                             artworkURL: artwork(item)
                         )
                     }
-                    .buttonStyle(.card)
                 }
-//                .focusable(true, interactions: .automatic)
-//                .padding(.horizontal, 20)
-//                .padding(.vertical, 28)
+                .padding(.vertical, 16)
             }
+            .scrollClipDisabled()
         }
     }
 }
@@ -172,10 +168,8 @@ private struct TVLandscapeMediaCard: View {
             .frame(width: 520, height: 292)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .tvFocusCardStyle()
         }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
+        .buttonStyle(.card)
         .disabled(isPreparingPlayback)
         .overlay(alignment: .topLeading) {
             if isPreparingPlayback {

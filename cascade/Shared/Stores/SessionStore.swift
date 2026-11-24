@@ -16,9 +16,21 @@ import UIKit
 
 @MainActor
 final class SessionStore: ObservableObject {
-    enum SessionStoreError: Error {
+    enum SessionStoreError: LocalizedError {
         case missingService
         case invalidAuthenticationResponse
+        case invalidServerAddress
+
+        var errorDescription: String? {
+            switch self {
+            case .missingService:
+                return "Connect to a server before signing in."
+            case .invalidAuthenticationResponse:
+                return "The server returned an incomplete sign-in response. Try signing in again."
+            case .invalidServerAddress:
+                return "Enter the full server address, including http:// or https:// and the port if needed."
+            }
+        }
     }
 
     private enum Keys {
@@ -41,6 +53,39 @@ final class SessionStore: ObservableObject {
     
     var isAuthenticated: Bool {
         activeAccount != nil
+    }
+
+    static func serverURL(from address: String) throws -> URL {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let components = URLComponents(string: trimmed),
+              let scheme = components.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              let host = components.host, !host.isEmpty,
+              !host.contains(where: \.isWhitespace),
+              components.port.map({ (1...65535).contains($0) }) ?? true,
+              let url = components.url else {
+            throw SessionStoreError.invalidServerAddress
+        }
+        return url
+    }
+
+    static func connectionErrorMessage(for error: Error) -> String {
+        let networkError = error as NSError
+        guard networkError.domain == NSURLErrorDomain else { return error.localizedDescription }
+
+        switch URLError.Code(rawValue: networkError.code) {
+        case .appTransportSecurityRequiresSecureConnection:
+            return "This build blocked the server’s HTTP connection. Update Cascade to a build that supports HTTP servers."
+        case .secureConnectionFailed:
+            return "Couldn’t establish HTTPS. Check that the address and port support HTTPS; an HTTP-only port needs an http:// address."
+        case .serverCertificateUntrusted, .serverCertificateHasBadDate,
+             .serverCertificateHasUnknownRoot, .serverCertificateNotYetValid:
+            return "The server’s HTTPS certificate isn’t trusted or valid for this address. Use the hostname covered by its valid certificate, and check the server’s certificate configuration."
+        case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed, .timedOut, .notConnectedToInternet:
+            return "Couldn’t reach the server. Check its address and port, and make sure this device and the server are connected through your network or Tailscale."
+        default:
+            return error.localizedDescription
+        }
     }
     
     func connect(to serverURL: URL, deviceName: String, deviceID: String, appVersion: String) async throws {
@@ -166,6 +211,23 @@ final class SessionStore: ObservableObject {
             )
             activeServer = normalizedServerURL
             activeAccount = nil
+            clearLastActiveAccountID()
+        }
+    }
+
+    func removeServer(_ serverURL: URL) {
+        let normalizedServerURL = canonicalServerURL(serverURL)
+        let removedAccountIDs = Set(savedAccounts
+            .filter { canonicalServerURL($0.serverURL) == normalizedServerURL }
+            .map(\.id))
+
+        savedAccounts.removeAll { canonicalServerURL($0.serverURL) == normalizedServerURL }
+        persistSavedAccounts()
+
+        if activeServer.map({ canonicalServerURL($0) }) == normalizedServerURL {
+            disconnect()
+        } else if let accountID = UserDefaults.standard.string(forKey: Keys.lastActiveAccountID),
+                  removedAccountIDs.contains(accountID) {
             clearLastActiveAccountID()
         }
     }
