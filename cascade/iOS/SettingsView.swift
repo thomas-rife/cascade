@@ -31,7 +31,7 @@ struct SettingsView: View {
                             step: 1
                         )
 
-                        Text("Applies when starting playback. Lower bitrates use less bandwidth and may require server transcoding.")
+                        Text("Applies when starting playback, lower bitrates use less bandwidth but may require transcoding")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
